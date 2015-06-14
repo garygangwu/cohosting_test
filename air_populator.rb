@@ -85,17 +85,42 @@ class DataUtils
   end
 
   def self.convert_work_sheet_to_list(rows)
-    {}
+    reservation_list = {}
+    (1..rows.size-1).each do |i|
+      row = rows[i]
+      reservation = {}
+      confirmation_code = row[0] # CODE at col 0
+      reservation['check_in'] = row[3] # start time at col 3
+      reservation['ws_raw'] = row
+      reservation_list[confirmation_code] = reservation
+    end
+    return reservation_list
   end
 
   def self.merge_into_sorted_arrays(airbnb, sheet)
     reservations = []
-    airbnb.each do |k, v|
+    sheet.each do |k, v|
+      if !airbnb[k].nil?
+        # Update sheet row with latest airbnb data
+        airbnb_row = airbnb[k]
+        v['check_in'] = airbnb_row['check_in']
+        x = v['ws_raw'] + [] # unfreeze the array
+        x[0] = airbnb_row['confirmation_code']
+        x[1] = airbnb_row['host']
+        x[2] = airbnb_row['listing']
+        x[3] = airbnb_row['check_in']
+        x[4] = airbnb_row['check_out']
+        x[5] = airbnb_row['guest']
+        x[6] = airbnb_row['number_of_guests']
+        x[7] = airbnb_row['guest_email']
+        v['ws_raw'] = x
+      end
       reservations << v
     end
-    sheet.each do |k, v|
-      if airbnb[k].nil?
+    airbnb.each do |k, v|
+      if sheet[k].nil?
         reservations << v
+        puts v.inspect
       end
     end
     reservations.sort! { |a, b| a['check_in'] <=> b['check_in'] }
@@ -105,16 +130,22 @@ class DataUtils
   def self.convert_to_sheet_rows(reservations)
     rows = []
     reservations.each do |r|
-      row = []
-      row << r['confirmation_code']
-      row << r['host']
-      row << r['listing']
-      row << r['check_in']
-      row << r['check_out']
-      row << r['guest']
-      row << r['number_of_guests']
-      row << r['guest_email']
-      rows << row
+      if r['ws_raw'].nil?
+        # Airbnb row
+        row = []
+        row << r['confirmation_code']
+        row << r['host']
+        row << r['listing']
+        row << r['check_in']
+        row << r['check_out']
+        row << r['guest']
+        row << r['number_of_guests']
+        row << r['guest_email']
+        rows << row
+      else
+        #Google sheet row
+        rows << r['ws_raw']
+      end
     end
     return rows
   end
@@ -126,5 +157,13 @@ ws = GoogleOAuth2Utils::get_work_sheets()[0]
 sheet_list = DataUtils.convert_work_sheet_to_list(ws.rows)
 reservations = DataUtils.merge_into_sorted_arrays(airbnb_list, sheet_list)
 rows = DataUtils.convert_to_sheet_rows(reservations)
-ws.update_cells(2, 1, rows)
+
+ws.max_rows = 2 # Clear up existing data. keep the 2nd row to reserve the font/style
+empty_row = ws.rows[1] || []
+empty_row = empty_row.map { |v| v = '' }
+ws.update_cells(2, 1, [empty_row])
 ws.save
+
+ws.update_cells(2, 1, rows)
+ws['I1'] = "Updated at: " + Time.now.to_s
+#ws.save
