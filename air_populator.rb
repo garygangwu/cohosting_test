@@ -159,6 +159,7 @@ def clear_up_work_sheet(ws)
   ws.save
 end
 
+puts "Executing ... #{Time.now.to_s}"
 work_sheets = GoogleOAuth2Utils::get_work_sheets
 AirConst::COHOST_GROUP.each do |title, cohost_ids|
   ws =  work_sheets.detect{ |s| s.title == title }
@@ -180,7 +181,9 @@ AirConst::COHOST_GROUP.each do |title, cohost_ids|
   clear_up_work_sheet(ws)
 
   ws.update_cells(2, 1, rows)
-  ws['I1'] = "Updated at: " + Time.now.strftime("%Y-%m-%d %H:%m:%S UTC")
+  ws['I1'] = "Updated at: " + Time.now.to_s
   ws.save
+  puts "Updated #{title} ... #{Time.now.to_s}"
 end
+puts "Completed ... #{Time.now.to_s}"
 
