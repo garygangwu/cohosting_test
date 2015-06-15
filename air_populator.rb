@@ -120,7 +120,6 @@ class DataUtils
     airbnb.each do |k, v|
       if sheet[k].nil?
         reservations << v
-        puts v.inspect
       end
     end
     reservations.sort! { |a, b| a['check_in'] <=> b['check_in'] }
@@ -151,19 +150,37 @@ class DataUtils
   end
 end
 
-reservation_json_obj = AirbnbUtils.get_all_reservations(2529228)
-airbnb_list = DataUtils.convert_airbnb_reservations_to_list(reservation_json_obj)
-ws = GoogleOAuth2Utils::get_work_sheets()[0]
-sheet_list = DataUtils.convert_work_sheet_to_list(ws.rows)
-reservations = DataUtils.merge_into_sorted_arrays(airbnb_list, sheet_list)
-rows = DataUtils.convert_to_sheet_rows(reservations)
+# Remove the data in the work sheet expect the first row
+def clear_up_work_sheet(ws)
+  ws.max_rows = 2 # Clear up existing data. keep the 2nd row to reserve the font/style
+  empty_row = ws.rows[1] || []
+  empty_row = empty_row.map { |v| v = '' }
+  ws.update_cells(2, 1, [empty_row])
+  ws.save
+end
 
-ws.max_rows = 2 # Clear up existing data. keep the 2nd row to reserve the font/style
-empty_row = ws.rows[1] || []
-empty_row = empty_row.map { |v| v = '' }
-ws.update_cells(2, 1, [empty_row])
-ws.save
+work_sheets = GoogleOAuth2Utils::get_work_sheets
+AirConst::COHOST_GROUP.each do |title, cohost_ids|
+  ws =  work_sheets.detect{ |s| s.title == title }
+  next if ws.nil?
 
-ws.update_cells(2, 1, rows)
-ws['I1'] = "Updated at: " + Time.now.to_s
-#ws.save
+  airbnb_list = {}
+  cohost_ids.each do |cohost_id|
+    host_owner_ids = AirConst::COHOST_MAP[cohost_id] || []
+    host_owner_ids.each do |id|
+      reservation_json_obj = AirbnbUtils.get_all_reservations(id)
+      airbnb_list.merge!(DataUtils.convert_airbnb_reservations_to_list(reservation_json_obj))
+    end
+  end
+
+  sheet_list = DataUtils.convert_work_sheet_to_list(ws.rows)
+  reservations = DataUtils.merge_into_sorted_arrays(airbnb_list, sheet_list)
+  rows = DataUtils.convert_to_sheet_rows(reservations)
+
+  clear_up_work_sheet(ws)
+
+  ws.update_cells(2, 1, rows)
+  ws['I1'] = "Updated at: " + Time.now.to_s
+  ws.save
+end
+
