@@ -2,7 +2,7 @@ require "google/api_client"
 require "google_drive"
 require 'net/http'
 require 'date'
-require './airconst'
+require_relative './airconst'
 
 class GoogleOAuth2Utils
   
@@ -180,7 +180,7 @@ AirConst::COHOST_GROUP.each do |title, cohost_ids|
   clear_up_work_sheet(ws)
 
   ws.update_cells(2, 1, rows)
-  ws['I1'] = "Updated at: " + Time.now.to_s
+  ws['I1'] = "Updated at: " + Time.now.strftime("%Y-%m-%d %H:%m:%S UTC")
   ws.save
 end
 
