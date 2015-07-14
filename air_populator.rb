@@ -90,7 +90,7 @@ class DataUtils
       row = rows[i]
       reservation = {}
       confirmation_code = row[0] # CODE at col 0
-      reservation['check_in'] = row[3] # start time at col 3
+      reservation['check_in'] = Date.strptime(row[3], '%m/%d/%Y').to_s # start time at col 3
       reservation['ws_raw'] = row
       reservation_list[confirmation_code] = reservation
     end
